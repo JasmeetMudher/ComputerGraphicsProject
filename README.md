@@ -41,17 +41,6 @@ Please ensure that these files are not deleted for the game to function properly
 
 ---
 
-## Demonstration Videos
-
-Two demonstration videos have been provided to showcase the gameplay:
-
-- **demo1.mp4**: Played by Aniruddha Mahajan
-- **demo2.mp4**: Played by Shreyas Srikrishna
-
-These videos demonstrate how to play the game and can serve as an example for new players.
-
----
-
 ## Game Flow
 
 1. **Start Screen**: Upon loading the game, you will see a start screen. Click to begin.
