@@ -76,6 +76,5 @@ The external libraries, **Three.js** and **TweenMax.js**, are located in the `li
 ## Acknowledgments
 
 - Thanks to **Three.js** and **TweenMax.js** for providing the frameworks necessary for building the 3D graphics and animations.
-- Special thanks to **Aniruddha Mahajan** and **Shreyas Srikrishna** for their contributions to this project.
 
 ---
