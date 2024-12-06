@@ -193,6 +193,224 @@ function generateNewGame(){
 }
 
 
+/**************** 1: BULLET ************ */
+/* ******************Function related to bullet creation.******************* */
+/* This function is used to create mesh of bullet object (bullet constructor) */ 
+Bullet = function(){
+  this.mesh = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshBasicMaterial( {color: usefulColours.black} ));
+}
+
+/* This function creates an individual bullet. */ 
+function generateBullet(){
+if(controller.bulletCount > 0)
+{
+  var fireSound = new Audio('sounds/bulletFire.wav');
+  fireSound.play();
+  fireSound.volume = 0.6;
+  controller.bulletCount--;
+  if(controller.bulletCount == 0)
+    bulletVal.style.animationName = 'flickering';
+  bulletVal.innerHTML = Math.floor(controller.bulletCount);
+  var newBullet = new Bullet();
+  newBullet.mesh.position.copy(aircraft.rotor.getWorldPosition());
+  bulletsInUse.push(newBullet);
+  scene.add(newBullet.mesh);
+}
+}
+
+/* This function is used to update the postion of the bullet. It also checks for collision of bullets with enemy Meteors. */ 
+function updateBullet(){
+
+for(var i=0; i<bulletsInUse.length;i++){
+  var bullet = bulletsInUse[i];
+  bulletsInUse[i].mesh.position.x += 8;
+
+  for (var j=0; j<meteorsHolder.meteorsInUse.length; j++){
+      var meteor = meteorsHolder.meteorsInUse[j];
+      var position_diff = bullet.mesh.position.clone().sub(meteor.mesh.position.clone());
+      var diff = position_diff.length();
+      if (diff<controller.distanceToleranceInMeteor){
+        fragmentsHolder.spawnFragments(meteor.mesh.position.clone(), 15, usefulColours.violet, 3);
+        meteorsPool.unshift(meteorsHolder.meteorsInUse.splice(j,1)[0]);
+        meteorsHolder.mesh.remove(meteor.mesh);
+        scene.remove(bulletsInUse[i].mesh);
+        bulletsInUse.splice(i,1);
+        controller.pointsScored += 100;
+        var meteor_bulletSound = new Audio('sounds/rockBreaking.wav');
+        meteor_bulletSound.play();
+        meteor_bulletSound.volume = 1;
+      }
+      else{
+
+      }
+  }
+}
+}
+
+/**************** 2: AIRCRAFT ************ */
+/* ******************Function related to aircraft creation.******************* */
+/* This function is used to create mesh of bullet object. (aircraft constructor)*/ 
+var Aircraft = function(){
+//1.Define the mesh as a generic 3D Object
+  this.mesh = new THREE.Object3D();
+  this.mesh.castShadow = true;
+  this.mesh.receiveShadow = true;
+  this.mesh.name = "aircraft";
+
+//2.Create the fuselage
+  var fuselageGeometry = new THREE.BoxGeometry(80,50,50); //generates cuboid with l,b,h=80,50,50
+  fuselageGeometry.vertices[4].y-=10;
+  fuselageGeometry.vertices[5].y-=10;
+  fuselageGeometry.vertices[6].y+=30;
+  fuselageGeometry.vertices[7].y+=30;
+  fuselageGeometry.vertices[4].z+=20;
+  fuselageGeometry.vertices[5].z-=20;
+  fuselageGeometry.vertices[6].z+=20;
+  fuselageGeometry.vertices[7].z-=20;
+  var fuselageMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.darkBlue });
+  var fuselage = new THREE.Mesh(fuselageGeometry, fuselageMaterial);
+  fuselage.receiveShadow = true;
+  fuselage.castShadow = true;
+  this.mesh.add(fuselage);
+
+//3. Create the Nose of the Aircraft (the part before the propelller)
+  var noseGeometry = new THREE.BoxGeometry(20,50,50);
+  var noseMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.lightBlue });
+  var nose = new THREE.Mesh(noseGeometry, noseMaterial);
+  nose.position.x = 50;
+  nose.castShadow = true;
+  nose.receiveShadow = true;
+  this.mesh.add(nose);
+
+//4. Create the tail of the Aircraft (Part where the airline logo is usually located)
+  var tailFinGeometry = new THREE.BoxGeometry(15,20,5);
+  var tailFinMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.lightBlue });
+  var tailFin = new THREE.Mesh(tailFinGeometry, tailFinMaterial);
+  tailFin.receiveShadow = true;
+  tailFin.position.set(-40,20,0); 
+  tailFin.castShadow = true;
+  this.mesh.add(tailFin);
+
+//5. Create the side wing of the Aircraft
+  var wingGeometry = new THREE.BoxGeometry(30,5,120);
+  var wingMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.mediumAqua, shading:THREE.FlatShading});
+  var wing = new THREE.Mesh(wingGeometry, wingMaterial);
+  wing.castShadow = true;
+  wing.receiveShadow = true;
+  
+  wing.position.set(0,15,0);
+  this.mesh.add(wing);
+
+//6.1. Create the rotor/propelller of the Aircraft
+  var rotorGeometry = new THREE.BoxGeometry(20,10,10);
+  rotorGeometry.vertices[4].y-=5;
+  rotorGeometry.vertices[5].y-=5;
+  rotorGeometry.vertices[6].y+=5;
+  rotorGeometry.vertices[7].y+=5;
+  rotorGeometry.vertices[4].z+=5;
+  rotorGeometry.vertices[5].z-=5;
+  rotorGeometry.vertices[6].z+=5;
+  rotorGeometry.vertices[7].z-=5;
+  var rotorMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.brown, shading:THREE.FlatShading});
+  this.rotor = new THREE.Mesh(rotorGeometry, rotorMaterial);
+  this.rotor.castShadow = true;
+  this.rotor.receiveShadow = true;
+
+  //6.2. Create the blades for the rotor
+    var propBladeGeometry = new THREE.BoxGeometry(1,80,10); 
+    var propBladeMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.black, shading:THREE.FlatShading});
+    var vertPropBlade = new THREE.Mesh(propBladeGeometry, propBladeMaterial);
+    vertPropBlade.castShadow = true;
+    vertPropBlade.receiveShadow = true;
+    vertPropBlade.position.set(8,0,0);      
+    var horizPropBlade = vertPropBlade.clone();
+
+    horizPropBlade.rotation.x = Math.PI/2;
+    horizPropBlade.castShadow = true;
+    horizPropBlade.receiveShadow = true;
+    this.rotor.add(vertPropBlade);
+    this.rotor.add(horizPropBlade);
+  this.rotor.position.set(60,0,0);
+  this.mesh.add(this.rotor);
+
+//7. Design the wheels/landing gear for the aircraft
+  //7.1 Add the right landing gear
+    var landingGearGeometry = new THREE.BoxGeometry(24,24,4);
+    var landingGearMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.black, shading:THREE.FlatShading});
+    var rightMainlandingGear = new THREE.Mesh(landingGearGeometry,landingGearMaterial);
+    rightMainlandingGear.position.set(25,-28,25);
+    //7.1.1 Add the axis for the landing gear
+      var LandingGearAxisGeometry = new THREE.BoxGeometry(10,10,6);
+      var LandingGearAxisMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.brown, shading:THREE.FlatShading});
+      var LandingGearAxis = new THREE.Mesh(LandingGearAxisGeometry,LandingGearAxisMaterial);
+      rightMainlandingGear.add(LandingGearAxis);
+    this.mesh.add(rightMainlandingGear);
+  //7.2 Clone right tire to make left landin gear
+    var leftMainlandingGear = rightMainlandingGear.clone();
+    leftMainlandingGear.position.z = -rightMainlandingGear.position.z;
+    this.mesh.add(leftMainlandingGear);
+  //7.3 Clone the right tire to make the rear landing gear
+    var rearlandingGear = rightMainlandingGear.clone();
+    
+    rearlandingGear.scale.set(.5,.5,.5);
+    rearlandingGear.position.set(-35,-5,0);
+    this.mesh.add(rearlandingGear);
+  //7.4 Add the chock/cover for the right gear
+    var LandingGearChockGeometry = new THREE.BoxGeometry(30,15,10);
+    var LandingGearChockMaterial = new THREE.MeshPhongMaterial({ emissiveIntensity: 0.9, color:usefulColours.red, shading:THREE.FlatShading});
+    var LandingGearRightChock = new THREE.Mesh(LandingGearChockGeometry,LandingGearChockMaterial);
+    LandingGearRightChock.position.set(25,-20,25);
+    this.mesh.add(LandingGearRightChock);
+  //7.5 Clone the rear wheel chock to make left chock
+    var LandingGearLeftChock = LandingGearRightChock.clone();  
+    LandingGearLeftChock.position.z = -LandingGearRightChock.position.z ;
+    this.mesh.add(LandingGearLeftChock);
+
+
+};
+
+/* This function creates our aircraft. */ 
+function generateAircraft(){
+aircraft = new Aircraft();
+aircraft.mesh.scale.set(.25,.25,.25);
+
+aircraft.mesh.position.y = controller.aircraftDefaultHeight;
+scene.add(aircraft.mesh);
+}
+
+/* This function is used to update the postion of the aircraft
+Also, it handles the collision of aircraft with meteors
+and appropriately triggers the code for generating meteor
+fragments upon collision */ 
+function updateAircraft(){
+controller.aircraftSpeed = transformValue(currMousePtrLoc.x,-.5,.5,controller.minAircraftSpeed, controller.maxAircraftSpeed);
+
+var targetX = transformValue(currMousePtrLoc.x,-1,1,-controller.aircraftAmplitudeWdth*0.7, -controller.aircraftAmplitudeWdth);
+controller.aircraftCollisionXDisplacement += controller.aircraftCollisionXSpeed;
+targetX += controller.aircraftCollisionXDisplacement;
+
+var targetY = transformValue(currMousePtrLoc.y,-.75,.75, controller.aircraftDefaultHeight-controller.aircraftAmplitudeHt, controller.aircraftDefaultHeight+controller.aircraftAmplitudeHt);
+controller.aircraftCollisionYSpeed += controller.aircraftCollisionYSpeed;
+targetY += controller.aircraftCollisionYSpeed;
+
+
+aircraft.mesh.position.y += (targetY-aircraft.mesh.position.y)*dT*controller.aircraftMovementSensi;
+aircraft.mesh.position.x += (targetX-aircraft.mesh.position.x)*dT*controller.aircraftMovementSensi;
+
+aircraft.mesh.rotation.z = (targetY-aircraft.mesh.position.y)*dT*controller.aircraftRotationXSensi;
+aircraft.mesh.rotation.x = (aircraft.mesh.position.y-targetY)*dT*controller.aircraftRotationZSensi;
+
+var targetCameraZ = transformValue(controller.aircraftSpeed, controller.minAircraftSpeed, controller.maxAircraftSpeed, controller.nearPosOfCamera, controller.farPosOfCamera);
+perspCam.fov = transformValue(currMousePtrLoc.x,-1,1,40, 80);
+perspCam.updateProjectionMatrix();
+perspCam.position.y += (aircraft.mesh.position.y - perspCam.position.y)*dT*controller.cameraSensivity;
+controller.aircraftCollisionXSpeed += (0-controller.aircraftCollisionXSpeed)*dT * 0.03;
+controller.aircraftCollisionXDisplacement += (0-controller.aircraftCollisionXDisplacement)*dT *0.01;
+controller.aircraftCollisionYSpeed += (0-controller.aircraftCollisionYSpeed)*dT * 0.03;
+controller.aircraftCollisionYSpeed += (0-controller.aircraftCollisionYSpeed)*dT *0.01;
+}
+
+
 
 /* *
  * *********************************************
