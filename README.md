@@ -1,4 +1,4 @@
-# Game Documentation
+# Meteor Escape
 
 ## Overview
 
@@ -8,13 +8,11 @@ This game is built using **WebGL**, utilizing technologies such as **JavaScript*
 
 ## Requirements
 
-- **Three.js** and **TweenMax.js** are used as external libraries (located in the `libs` folder). These are open-source libraries and should not be considered for plagiarism during evaluation.
+- **Three.js** and **TweenMax.js** are used as external libraries (located in the `libs` folder).
 - The actual source code files include:
   - `game.js` - The main game logic, including aircraft movement, collision detection, and scoring.
   - `index.html` - The HTML file containing the structure of the game interface.
   - `game.css` - The stylesheet for the game, including the layout and visual appearance.
-
-Please ensure that these files are not deleted for the game to function properly.
 
 ---
 
