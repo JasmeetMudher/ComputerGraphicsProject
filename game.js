@@ -1072,3 +1072,146 @@ function keyButtonReleaseHandler(event){
   }
 }
 
+/****** 7: METEOR FRAGMENTS  **** */
+/* ***Functions used for fragements when meteors explode***** */
+/This function creates individual fragments of the obstacle meteors./
+Fragment = function(){
+  var geomt = new THREE.TetrahedronGeometry(3,0);
+  var matrl = new THREE.MeshPhongMaterial({color:0x009999,shininess:0,specular:0xffffff,shading:THREE.FlatShading});
+  this.mesh = new THREE.Mesh(geomt,matrl);
+}
+
+/* This function populates the object which holdes the particles generated from breaking of meteors. */
+FragmentsHolder = function (){
+  this.mesh = new THREE.Object3D();
+}
+
+/* This function generates the fragments of the metoers after it's destruction and add those fragements to the scene. */
+function generateFragments(){
+  for (var i=0; i<10; i++){
+    var fragment = new Fragment();
+    fragmentsPool.push(fragment);
+  }
+  fragmentsHolder = new FragmentsHolder();
+  scene.add(fragmentsHolder.mesh)  
+}
+
+/* This function creates graphics for exploading meteor.  Here we are using TweenMax library available in Three js 
+   which is responsible for effects related to breaking and movement of meteor particles after explosion.*/
+Fragment.prototype.explode = function(postn, color, scale){
+  var thisObject = this;
+  var parentObj = this.mesh.parent;
+  this.mesh.material.color = new THREE.Color(color);
+  this.mesh.material.needsUpdate = true;
+  this.mesh.scale.set(scale, scale, scale);
+  var tgtY = postn.y + 50*(-1 + Math.random()*2);
+  var tgtX = postn.x + 50*(-1 + Math.random()*2);
+  var speed = .6 + (Math.random()*(.2));
+  TweenMax.to(this.mesh.rotation, speed, {x:Math.random()*12, y:Math.random()*12});   // using Twin Max Library in Three js
+  TweenMax.to(this.mesh.scale, speed, {x:.1, y:.1, z:.1});
+  TweenMax.to(this.mesh.position, speed, {x:tgtX, y:tgtY, delay:Math.random() *.1, ease:Power2.easeOut, onComplete:function(){
+      if(parentObj) parentObj.remove(thisObject.mesh);
+      thisObject.mesh.scale.set(1,1,1);
+      fragmentsPool.unshift(thisObject);
+    }});
+}
+
+FragmentsHolder.prototype.spawnFragments = function(postn, density, color, scale){
+
+  var nParticles = density;
+  for (var i=0; i<nParticles; i++){
+    var frag;
+    if (fragmentsPool.length) {
+      frag = fragmentsPool.pop();
+    }else{
+      frag = new Fragment();
+    }
+    this.mesh.add(frag.mesh);
+    frag.mesh.visible = true;
+    var _this = this;
+    frag.mesh.position.y = postn.y;
+    frag.mesh.position.x = postn.x;
+    frag.explode(postn,color, scale);
+  }
+}
+
+
+/****** 8: Jewels  **** */
+/* Functions for creating, collecting and movement of jewels. */
+
+/* This function creates a single jewel object and set values of it's properties. */
+Jewel = function(){
+  var geomt = new THREE.TetrahedronGeometry(5,0);
+  var matrl = new THREE.MeshPhongMaterial({color: usefulColours.limeGreen,shininess:0, specular:0xffffff, shading:THREE.FlatShading});
+  this.mesh = new THREE.Mesh(geomt,matrl);
+  this.mesh.castShadow = true; // shadow activated
+  this.angle = 0;  // setting angle to be 0
+  this.dist = 0;   // setting distance to be 0
+}
+
+/* This function function creates the given no of jewels and populates the object which holdes the jewels.*/
+JewelsHolder = function (jewels){
+  this.mesh = new THREE.Object3D();
+  this.jewelsInUse = [];
+  this.jewelsPool = [];
+  for (var k=0; k < jewels; k++){
+    var jwl = new Jewel();
+    this.jewelsPool.push(jwl);
+  }
+}
+
+/*This function creates a set of jewels and adds them to scene. */
+function generateJewels(){
+
+  jewelsHolder = new JewelsHolder(20);
+  scene.add(jewelsHolder.mesh)
+}
+
+/* This functions is used to generate jewels. */
+JewelsHolder.prototype.spawnJewels = function(){
+
+  var jewelN = 1 + Math.floor(Math.random()*10);
+  var distance_from_sea = controller.radiusOfSea + controller.aircraftDefaultHeight + (-1 + Math.random() * 2) * controller.aircraftAmplitudeHt;
+  var amplitude = Math.round(Math.random()*10) + 10;
+  for (var i=0; i<jewelN; i++){
+    var jewel;
+    if (this.jewelsPool.length) {
+      jewel = this.jewelsPool.pop();
+    }else{
+      jewel = new Jewel();
+    }
+    this.mesh.add(jewel.mesh);
+    this.jewelsInUse.push(jewel);
+    jewel.angle = - (i*0.02);
+    jewel.pointsScored = distance_from_sea + Math.cos(i*.5)*amplitude;
+    jewel.mesh.position.y = -controller.radiusOfSea + Math.sin(jewel.angle)*jewel.pointsScored;
+    jewel.mesh.position.x = Math.cos(jewel.angle)*jewel.pointsScored;
+  }
+}
+/* This functions move the current set of jewels. It also checks whether a jewel is collected by aircraft or not. */
+JewelsHolder.prototype.rotateJewels = function() {
+  for (var i = 0; i < this.jewelsInUse.length; i++) {
+    var jewel = this.jewelsInUse[i];
+    if (jewel.exploding) continue;
+    jewel.angle += controller.speed * controller.speedOfJewel * dT;
+    if (jewel.angle > Math.PI * 2) jewel.angle -= Math.PI * 2;
+    jewel.mesh.position.x = Math.cos(jewel.angle) * jewel.pointsScored;
+    jewel.mesh.position.y = -controller.radiusOfSea + jewel.pointsScored * (Math.sin(jewel.angle));
+    jewel.mesh.rotation.y += Math.random() * .1;
+    jewel.mesh.rotation.z += Math.random() * .1;
+
+    var diff_position = aircraft.mesh.position.clone().sub(jewel.mesh.position.clone());
+    var diff = diff_position.length();
+    if (diff < controller.jewelDistanceToler) {
+      this.jewelsPool.unshift(this.jewelsInUse.splice(i, 1)[0]);
+      this.mesh.remove(jewel.mesh);
+      fragmentsHolder.spawnFragments(jewel.mesh.position.clone(), 5, 0x009999, .8);
+      increaseHealth();
+      i--;
+    } else if (jewel.angle > Math.PI) {
+      this.jewelsPool.unshift(this.jewelsInUse.splice(i, 1)[0]);
+      this.mesh.remove(jewel.mesh);
+      i--;
+    }
+  }
+}
